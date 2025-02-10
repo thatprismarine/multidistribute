@@ -1,0 +1,20 @@
+{
+  "scripts": {
+    "test": "ts-mocha -p ./tsconfig.json tests/**/*.ts"
+  },
+  "dependencies": {
+    "@project-serum/anchor": "^0.26.0",
+    "@solana/spl-token": "^0.3.9",
+    "@solana/web3.js": "^1.87.6"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.11.0",
+    "chai": "^4.3.10",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3",
+    "tslib": "^2.6.2"
+  }
+}

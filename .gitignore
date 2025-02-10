@@ -1,0 +1,5 @@
+.aider*
+target/
+.gitignore
+node_modules/
+.anchor/
