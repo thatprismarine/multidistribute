@@ -9,6 +9,7 @@ import {
   mintTo,
   getAccount,
   getAssociatedTokenAddress,
+  getMint,
 } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
@@ -225,7 +226,7 @@ describe("multidistribute", () => {
 
   it("Creates a collection", async () => {
     await program.methods
-      .initCollection(COUNTER, MAX_TOKENS)
+      .initCollection(COUNTER, MAX_TOKENS, false)
       .accounts({
         collection,
         mint: mint1,
@@ -324,6 +325,7 @@ describe("multidistribute", () => {
       .accounts({
         collection,
         userState,
+        mint: mint1,
         userTokenAccount: userTokenAccount1,
         vault: collectionVault,
         replacementMint,
@@ -424,6 +426,7 @@ describe("multidistribute", () => {
       .accounts({
         collection,
         userState,
+        mint: mint1,
         userTokenAccount: userTokenAccount1,
         vault: collectionVault,
         replacementMint,
@@ -507,6 +510,126 @@ describe("multidistribute", () => {
       distribution2UserState
     );
     assert.equal(distribution2UserStateAccount.receivedAmount.toString(), "160");
+  });
+
+  it("Burns tokens when burn_tokens is true", async () => {
+    // Create a new collection with burn_tokens=true
+    const [burnCollection] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("collection"),
+        authority.publicKey.toBuffer(),
+        mint1.toBuffer(),
+        new anchor.BN(2).toArrayLike(Buffer, "le", 8),
+      ],
+      program.programId
+    );
+
+    const burnCollectionVault = await getAssociatedTokenAddress(
+      mint1,
+      burnCollection,
+      true
+    );
+
+    const [burnReplacementMint] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("replacement_mint"),
+        burnCollection.toBuffer(),
+      ],
+      program.programId
+    );
+
+    const userBurnReplacementTokenAccount = await getAssociatedTokenAddress(
+      burnReplacementMint,
+      user.publicKey
+    );
+
+    const [burnUserState] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("user_state"),
+        burnCollection.toBuffer(),
+        user.publicKey.toBuffer(),
+      ],
+      program.programId
+    );
+
+    await program.methods
+      .initCollection(new anchor.BN(2), MAX_TOKENS, true)
+      .accounts({
+        collection: burnCollection,
+        mint: mint1,
+        vault: burnCollectionVault,
+        replacementMint: burnReplacementMint,
+        authority: authority.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .rpc();
+
+    // Check initial balances
+    const userAccount1BeforeBurn = await getAccount(
+      provider.connection,
+      userTokenAccount1
+    );
+    const vaultBeforeBurn = await getAccount(
+      provider.connection,
+      burnCollectionVault
+    );
+    const mintSupplyBefore = (await getMint(provider.connection, mint1)).supply;
+
+    // Commit tokens to burn collection
+    await program.methods
+      .userCommitToCollection(new anchor.BN(300))
+      .accounts({
+        collection: burnCollection,
+        userState: burnUserState,
+        mint: mint1,
+        userTokenAccount: userTokenAccount1,
+        vault: burnCollectionVault,
+        replacementMint: burnReplacementMint,
+        userReplacementTokenAccount: userBurnReplacementTokenAccount,
+        user: user.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      })
+      .signers([user])
+      .rpc();
+
+    // Verify balances after burn
+    const userAccount1AfterBurn = await getAccount(
+      provider.connection,
+      userTokenAccount1
+    );
+    const vaultAfterBurn = await getAccount(
+      provider.connection,
+      burnCollectionVault
+    );
+    const mintSupplyAfter = (await getMint(provider.connection, mint1)).supply;
+
+    // User balance should decrease
+    assert.equal(
+      userAccount1BeforeBurn.amount - BigInt(300),
+      userAccount1AfterBurn.amount
+    );
+    
+    // Vault balance should not change since tokens are burned
+    assert.equal(vaultBeforeBurn.amount, vaultAfterBurn.amount);
+    
+    // Mint supply should decrease
+    assert.equal(
+      mintSupplyBefore - BigInt(300),
+      mintSupplyAfter
+    );
+
+    // Check replacement tokens were minted
+    const userReplacementBalance = (await getAccount(
+      provider.connection,
+      userBurnReplacementTokenAccount
+    )).amount;
+    assert.equal(userReplacementBalance, BigInt(300));
   });
 
   it("Withdraws tokens from collection", async () => {

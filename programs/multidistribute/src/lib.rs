@@ -22,6 +22,7 @@ pub mod multidistribute {
         ctx: Context<InitCollection>,
         counter: u64,
         max_collectable_tokens: u64,
+        burn_tokens: bool,
     ) -> Result<()> {
         require!(
             max_collectable_tokens > 0,
@@ -38,6 +39,7 @@ pub mod multidistribute {
         collection.replacement_mint = ctx.accounts.replacement_mint.key();
         collection.bump = *ctx.bumps.get("collection").unwrap();
         collection.counter = counter;
+        collection.burn_tokens = burn_tokens;
         Ok(())
     }
 
@@ -157,16 +159,28 @@ pub mod multidistribute {
         let collection = &ctx.accounts.collection;
         let user_state = &mut ctx.accounts.user_state;
 
-        // Transfer tokens from user to vault
-        let transfer_ctx = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.user_token_account.to_account_info(),
-                to: ctx.accounts.vault.to_account_info(),
-                authority: ctx.accounts.user.to_account_info(),
-            },
-        );
-        token::transfer(transfer_ctx, amount)?;
+        // Either burn or transfer the tokens
+        if collection.burn_tokens {
+            let burn_ctx = CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Burn {
+                    mint: ctx.accounts.mint.to_account_info(),
+                    from: ctx.accounts.user_token_account.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            );
+            token::burn(burn_ctx, amount)?;
+        } else {
+            let transfer_ctx = CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.user_token_account.to_account_info(),
+                    to: ctx.accounts.vault.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            );
+            token::transfer(transfer_ctx, amount)?;
+        }
 
         // Mint replacement tokens to user
         let counter_bytes = collection.counter.to_le_bytes();
@@ -464,14 +478,21 @@ pub struct UserCommitToCollection<'info> {
     )]
     pub user_state: Account<'info, CollectionUserState>,
 
+    /// The SPL token mint for tokens being collected
+    #[account(
+        mut,
+        address = collection.mint
+    )]
+    pub mint: Account<'info, Mint>,
+
     /// The token account providing the tokens to deposit
     #[account(
         mut,
-        token::mint = vault.mint
+        token::mint = mint
     )]
     pub user_token_account: Account<'info, TokenAccount>,
 
-    /// The collection's vault to receive the deposited tokens
+    /// The collection's vault to receive the deposited tokens (if not burning)
     #[account(
         mut,
         address = collection.vault
@@ -578,6 +599,8 @@ pub struct Collection {
     pub replacement_mint: Pubkey,
     pub bump: u8,
     pub counter: u64,
+    /// whether to burn input tokens instead of collecting them
+    pub burn_tokens: bool,
 }
 
 /// Tracks an individual user's deposits into a collection.
