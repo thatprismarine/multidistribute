@@ -345,21 +345,21 @@ pub struct DecreaseCollectionMaxTokens<'info> {
 pub struct WithdrawFromCollection<'info> {
     /// The collection to withdraw from
     #[account(
-        constraint = collection.authority == authority.key()
+        has_one = authority
     )]
     pub collection: Account<'info, Collection>,
 
     /// The collection's vault, holding the tokens to withdraw
     #[account(
         mut,
-        constraint = vault.key() == collection.vault
+        address = collection.vault
     )]
     pub vault: Account<'info, TokenAccount>,
 
     /// The token account to receive the withdrawn tokens
     #[account(
         mut,
-        constraint = authority_token_account.mint == vault.mint
+        token::mint = vault.mint
     )]
     pub authority_token_account: Account<'info, TokenAccount>,
 
@@ -387,7 +387,7 @@ pub struct InitDistribution<'info> {
 
     /// The collection this distribution is associated with
     #[account(
-        constraint = collection.authority == authority.key()
+        has_one = authority
     )]
     pub collection: Account<'info, Collection>,
 
@@ -467,25 +467,21 @@ pub struct UserCommitToCollection<'info> {
     /// The token account providing the tokens to deposit
     #[account(
         mut,
-        constraint = user_token_account.mint == vault.mint
+        token::mint = vault.mint
     )]
     pub user_token_account: Account<'info, TokenAccount>,
 
     /// The collection's vault to receive the deposited tokens
     #[account(
         mut,
-        constraint = vault.key() == collection.vault
+        address = collection.vault
     )]
     pub vault: Account<'info, TokenAccount>,
 
     /// The replacement mint owned by the collection
     #[account(
         mut,
-        seeds = [
-            b"replacement_mint",
-            collection.key().as_ref()
-        ],
-        bump
+        address = collection.replacement_mint
     )]
     pub replacement_mint: Account<'info, Mint>,
 
@@ -516,7 +512,7 @@ pub struct UserClaimFromDistribution<'info> {
     /// The distribution to claim tokens from
     #[account(
         mut,
-        constraint = distribution.collection == collection.key()
+        has_one = collection
     )]
     pub distribution: Account<'info, Distribution>,
 
@@ -548,7 +544,7 @@ pub struct UserClaimFromDistribution<'info> {
     /// The vault holding the tokens to be distributed
     #[account(
         mut,
-        constraint = distribution_vault.key() == distribution.vault
+        address = distribution.vault
     )]
     pub distribution_vault: Account<'info, TokenAccount>,
 
