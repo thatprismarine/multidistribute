@@ -18,6 +18,7 @@ pub mod multidistribute {
     /// # Arguments
     /// * `counter` - Unique counter value to allow multiple collections for the same mint
     /// * `max_collectable_tokens` - Maximum number of tokens that can be deposited into this collection
+    /// * `burn_tokens` - If true, committed tokens will be burned instead of stored in the vault
     pub fn init_collection(
         ctx: Context<InitCollection>,
         counter: u64,
@@ -151,7 +152,8 @@ pub mod multidistribute {
     ///
     /// Users commit tokens to become eligible for distributions. Their share of
     /// future distributions will be proportional to their committed amount relative
-    /// to the collection's max_collectable_tokens.
+    /// to the collection's max_collectable_tokens. Users receive freshly minted
+    /// replacement tokens equal to their committed amount.
     ///
     /// # Arguments
     /// * `amount` - Number of tokens to commit to the collection

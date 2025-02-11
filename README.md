@@ -7,7 +7,7 @@ It allows an authority to set up a pool (collection) where users can commit toke
 ## Program Functionality
 
 - **Collections:**
-  An authority initializes a collection with a cap on the total tokens that can be deposited, usually based on the circulating amount of the token. Users commit tokens to the collection and their deposit is tracked for future reward distributions.
+  An authority initializes a collection with a cap on the total tokens that can be deposited, usually based on the circulating amount of the token. Users commit tokens to the collection and receive replacement tokens in return. The collection can be configured to either store the committed tokens in a vault or burn them. User deposits are tracked for future reward distributions.
 
 - **Distributions:**
   The collection authority can set up a distribution associated with a collection. The distribution holds tokens that are later shared among the users who deposited tokens into the collection.
@@ -20,17 +20,17 @@ It allows an authority to set up a pool (collection) where users can commit toke
 
 ## Instructions
 
-- **init_collection** - Creates a new token collection with specified maximum deposit limit
+- **init_collection** - Creates a new token collection with specified maximum deposit limit and burn configuration
 - **decrease_collection_max_collectable_tokens** - Authority reduces the maximum deposit limit for a collection
 - **withdraw_from_collection** - Authority withdraws tokens from collection vault
 - **init_distribution** - Creates a new distribution for rewarding collection depositors
 - **add_distribution_tokens** - Adds tokens to a distribution's reward pool
-- **user_commit_to_collection** - User deposits tokens into a collection
+- **user_commit_to_collection** - User deposits tokens into a collection and receives freshly minted replacement tokens
 - **user_claim_from_distribution** - User claims their share of distribution rewards
 
 ## Program Accounts
 
-- **Collection** - Tracks configuration and state for a token collection including authority, total tokens collected, maximum deposit limit, and vault
+- **Collection** - Tracks configuration and state for a token collection including authority, total tokens collected, maximum deposit limit, vault, replacement mint, and burn configuration
 - **CollectionUserState** - Records how many tokens a user has deposited into a collection
 - **Distribution** - Manages token distribution for a collection including total tokens deposited, mint, vault and amount distributed
 - **DistributionUserState** - Tracks how many tokens a user has received from a distribution
