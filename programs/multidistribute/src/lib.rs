@@ -28,12 +28,14 @@ pub mod multidistribute {
             ErrorCode::InvalidMaxCollectableTokens
         );
 
+
         let collection = &mut ctx.accounts.collection;
         collection.authority = ctx.accounts.authority.key();
         collection.lifetime_tokens_collected = 0;
         collection.max_collectable_tokens = max_collectable_tokens;
         collection.mint = ctx.accounts.mint.key();
         collection.vault = ctx.accounts.vault.key();
+        collection.replacement_mint = ctx.accounts.replacement_mint.key();
         collection.bump = *ctx.bumps.get("collection").unwrap();
         collection.counter = counter;
         Ok(())
@@ -152,7 +154,7 @@ pub mod multidistribute {
     /// # Arguments
     /// * `amount` - Number of tokens to commit to the collection
     pub fn user_commit_to_collection(ctx: Context<UserCommitToCollection>, amount: u64) -> Result<()> {
-        let collection = &mut ctx.accounts.collection;
+        let collection = &ctx.accounts.collection;
         let user_state = &mut ctx.accounts.user_state;
 
         // Transfer tokens from user to vault
@@ -166,7 +168,30 @@ pub mod multidistribute {
         );
         token::transfer(transfer_ctx, amount)?;
 
+        // Mint replacement tokens to user
+        let counter_bytes = collection.counter.to_le_bytes();
+        let seeds = &[
+            b"collection",
+            collection.authority.as_ref(),
+            collection.mint.as_ref(),
+            &counter_bytes,
+            &[collection.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        let mint_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            token::MintTo {
+                mint: ctx.accounts.replacement_mint.to_account_info(),
+                to: ctx.accounts.user_replacement_token_account.to_account_info(),
+                authority: ctx.accounts.collection.to_account_info(),
+            },
+            signer,
+        );
+        token::mint_to(mint_ctx, amount)?;
+
         // Update states
+        let collection = &mut ctx.accounts.collection;
         collection.lifetime_tokens_collected = collection
             .lifetime_tokens_collected
             .checked_add(amount)
@@ -278,6 +303,21 @@ pub struct InitCollection<'info> {
     )]
     pub vault: Account<'info, TokenAccount>,
 
+    /// The replacement mint owned by the collection
+    #[account(
+        init,
+        payer = authority,
+        mint::decimals = mint.decimals,
+        mint::authority = collection,
+        mint::freeze_authority = collection,
+        seeds = [
+            b"replacement_mint",
+            collection.key().as_ref()
+        ],
+        bump
+    )]
+    pub replacement_mint: Account<'info, Mint>,
+
     /// The authority who can manage this collection and pays for these accounts
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -285,6 +325,7 @@ pub struct InitCollection<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -437,12 +478,34 @@ pub struct UserCommitToCollection<'info> {
     )]
     pub vault: Account<'info, TokenAccount>,
 
+    /// The replacement mint owned by the collection
+    #[account(
+        mut,
+        seeds = [
+            b"replacement_mint",
+            collection.key().as_ref()
+        ],
+        bump
+    )]
+    pub replacement_mint: Account<'info, Mint>,
+
+    /// The user's token account to receive replacement tokens
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = replacement_mint,
+        associated_token::authority = user
+    )]
+    pub user_replacement_token_account: Account<'info, TokenAccount>,
+
     /// The user depositing tokens, potentially paying for the user_state account
     #[account(mut)]
     pub user: Signer<'info>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -516,6 +579,7 @@ pub struct Collection {
     pub max_collectable_tokens: u64,
     pub mint: Pubkey,
     pub vault: Pubkey,
+    pub replacement_mint: Pubkey,
     pub bump: u8,
     pub counter: u64,
 }

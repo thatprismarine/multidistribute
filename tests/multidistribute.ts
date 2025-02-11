@@ -28,7 +28,9 @@ describe("multidistribute", () => {
   let userTokenAccount2: PublicKey;
   let collection: PublicKey;
   let collectionVault: PublicKey;
+  let replacementMint: PublicKey;
   let userState: PublicKey;
+  let userReplacementTokenAccount: PublicKey;
   let distribution1: PublicKey;
   let distribution1Vault: PublicKey;
   let distribution2: PublicKey;
@@ -150,6 +152,19 @@ describe("multidistribute", () => {
       true // allowOwnerOffCurve: true since collection is a PDA
     );
 
+    [replacementMint] = await PublicKey.findProgramAddress(
+      [
+        Buffer.from("replacement_mint"),
+        collection.toBuffer(),
+      ],
+      program.programId
+    );
+
+    userReplacementTokenAccount = await getAssociatedTokenAddress(
+      replacementMint,
+      user.publicKey
+    );
+
     [userState] = await PublicKey.findProgramAddress(
       [
         Buffer.from("user_state"),
@@ -215,10 +230,12 @@ describe("multidistribute", () => {
         collection,
         mint: mint1,
         vault: collectionVault,
+        replacementMint,
         authority: authority.publicKey,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .rpc();
 
@@ -309,9 +326,13 @@ describe("multidistribute", () => {
         userState,
         userTokenAccount: userTokenAccount1,
         vault: collectionVault,
+        replacementMint,
+        userReplacementTokenAccount,
         user: user.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([user])
       .rpc();
@@ -405,9 +426,13 @@ describe("multidistribute", () => {
         userState,
         userTokenAccount: userTokenAccount1,
         vault: collectionVault,
+        replacementMint,
+        userReplacementTokenAccount,
         user: user.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
       })
       .signers([user])
       .rpc();
