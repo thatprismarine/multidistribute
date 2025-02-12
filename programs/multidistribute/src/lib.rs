@@ -325,7 +325,6 @@ pub struct InitCollection<'info> {
         payer = authority,
         mint::decimals = mint.decimals,
         mint::authority = collection,
-        mint::freeze_authority = collection,
         seeds = [
             b"replacement_mint",
             collection.key().as_ref()
