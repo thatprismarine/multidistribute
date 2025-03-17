@@ -8,6 +8,7 @@
     "@solana/web3.js": "^1.87.6"
   },
   "devDependencies": {
+    "@solana/spl-governance": "^0.3.25",
     "@types/chai": "^5.0.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.11.0",
