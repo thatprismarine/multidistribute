@@ -3,7 +3,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 use std::mem::size_of;
 
-declare_id!("DisJzzeTrLXzJgtaaqBxcNKLrLFyc4mY3ELGCdEkVPzt");
+declare_id!("3pXyP2BALvdpq8w9aoCXEhtxqG56JT8MEqeKRgqANnMt");
 
 #[program]
 pub mod multidistribute {

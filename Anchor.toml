@@ -3,7 +3,7 @@ seeds = true
 skip-lint = false
 
 [programs.localnet]
-multidistribute = "DisJzzeTrLXzJgtaaqBxcNKLrLFyc4mY3ELGCdEkVPzt"
+multidistribute = "3pXyP2BALvdpq8w9aoCXEhtxqG56JT8MEqeKRgqANnMt"
 
 [registry]
 url = "https://api.apr.dev"
